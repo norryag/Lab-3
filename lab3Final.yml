@@ -1,0 +1,67 @@
+---
+- name: bring up the vlan interfaces
+  hosts: switch1 switch2
+  gather_facts: false
+  tasks:
+    - name: vlan up no shut
+      ios_config:
+        lines:
+          - interface vlan 10
+          - no shut
+          - interface vlan 20
+          - no ip address
+          - no shut
+          - interface vlan 30
+          - no ip address
+          - no shut
+          - exit
+- name: Set switch1 SVI/VLAN interfaces for inter-vlan routing
+  hosts: switch1
+  gather_facts: false
+  tasks:
+    - name: Set SVIs
+      ios_l3_interfaces:
+        config:
+        - name: "{{ item.name }}"
+          ipv4:
+          - address: "{{ item.ip }} "
+        state: replaced
+      loop:
+          - { name: "vlan10", ip: "10.1.11.101 255.255.255.0" }
+          - { name: "vlan20", ip: "10.1.22.103 255.255.255.0" }
+          - { name: "vlan30", ip: "10.1.33.103 255.255.255.0" }
+    - name: Enable routing
+      ios_config:
+        lines:
+        - ip routing
+- name: Set switch2 SVI/VLAN interfaces for interfaces for inter-vlan routing
+  hosts: switch2
+  gather_facts: false
+  tasks:
+    - name: Set SVIs
+      ios_l3_interfaces:
+        config:
+        - name: "{{ item.name }}"
+          ipv4:
+          - address: "{{ item.ip }}"
+        state: replaced
+      loop:
+           - { name: "vlan10", ip: "10.1.11.102 255.255.255.0" }
+           - { name: "vlan20", ip: "10.1.22.104 255.255.255.0" }
+           - { name: "vlan30", ip: "10.1.33.104 255.255.255.0" }
+    - name: Enable routing
+      ios_config:
+        lines:
+        - ip routing
+
+  # - debug: var=ping_results.packet_loss
+
+- name: save run to start
+  hosts: switch1 switch2
+  gather_facts: false
+  tasks:
+    - name: Save Running Config to Startup Config
+      ios_config:
+        save_when: modified
+       
+
